@@ -1,4 +1,5 @@
 GeneralizedAR
 =============
 
-sharing the code for generalizing AR
+sharing the code for generalizing AR.
+
