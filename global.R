@@ -1,27 +1,28 @@
 #-----------------------------------------------------------------------------------------------#
 # reading the all camp files of the folder
   
-  library(ggplot2)
-  library(car)
-  library(dplyr)
+  suppressPackageStartupMessages(library(ggplot2))
+  suppressPackageStartupMessages(library(car))
+  suppressPackageStartupMessages(library(dplyr))
 
-all.the.files <- list.files("data",full=T)
-all.the.data <- lapply(all.the.files, read.delim, header=T, sep="\t", check.names=F)
-camp_data <- do.call('rbind',all.the.data)
-       
-names(camp_data)[6:9] <- c("survey_ts","no_imp","netID_last_imp","ts_last_imp")
+# camp_data <- read.delim("extra/original.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")
+# 
+# country_net <- read.delim("extra/network_country.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")
+# country_net <- country_net[,-2]
+#   
+# merged <- merge(camp_data,country_net,by.x="netID_last_imp",by.y="id",all.x=T)
+# merged <- subset(merged, !(is.na(merged$country)))
+# 
+# write.table(merged,"camp_data.csv", row.names=F, col.names=T, sep="\t", na="", quote=F)
 
-#-----------------------------------------------------------------------------------------------#
-# transforming of the calender week from UNIX timestamp and saving as a new column
-  
-ts_to_week <- function(x) {strftime(as.POSIXct(x, origin="1970-01-01"),format="%W")}
-camp_data <-transform(camp_data,week=ts_to_week(ts_last_imp))
+  camp_data <- read.delim("camp_data.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")  
   
 #-----------------------------------------------------------------------------------------------#
 # defining a variable of campaign IDs
-unq_campID <- unique(camp_data$campaignID)
-unq_week <- unique(camp_data$week)
-unq_netID <- unique(camp_data$netID_last_imp)
+  unq_country <- unique(camp_data$country)
+  unq_campID <- unique(camp_data$campaignID)
+  unq_week <- unique(camp_data$week)
+  unq_netID <- unique(camp_data$netID_last_imp)
   
 #-----------------------------------------------------------------------------------------------#
 # selecting values of S3
@@ -107,12 +108,12 @@ camp_s5 <- subset(camp_data,(!is.na(camp_data$S5)) & camp_data$S5>0)
 camp_s5$S5_kk <- recode(camp_s5$S5, recodes="1='1';2='2';3='3';4='4';5:hi='5+'",as.factor.result=T,levels=c("1","2","3","4","5+"))
   
 #-----------------------------------------------------------------------------------------------#
-# selecting values of S12
+# selecting values of S13
   
-S12 <- function(x){
+S13 <- function(x){
     
-  r = regexpr("S12=([0-9]+);",camp_data$answers, perl=TRUE)
-  grex = gregexpr("S12=([0-9]+);",camp_data$answers)
+  r = regexpr("S13=([0-9]+);",camp_data$answers, perl=TRUE)
+  grex = gregexpr("S13=([0-9]+);",camp_data$answers)
     
   matched_len <- function(x){attr(x,"match.length")}
   len_char <- sapply(grex,matched_len)
@@ -133,10 +134,9 @@ S12 <- function(x){
   return(result)
 }
   
-camp_data$S12 <- S12(camp_data$answers)
-camp_data$S12 <- as.integer(camp_data$S12)
+camp_data$S13 <- S13(camp_data$answers)
+camp_data$S13 <- as.integer(camp_data$S13)
 
-camp_s12 <- subset(camp_data,!is.na(camp_data$S12))
-camp_s12 <- subset(camp_data,(camp_data$S12<13)&(camp_data$S12>0))
-camp_s12$S12_kk <- recode(camp_s12$S12, recodes="c(1,2,3,12)='low';4:7='medium';8:11='high'",as.factor.result=T,levels=c("low","medium","high"))
-  
+camp_s13 <- subset(camp_data,!is.na(camp_data$S13))
+camp_s13 <- subset(camp_data,(camp_data$S13<14)&(camp_data$S13>0))
+camp_s13$S13_de <- recode(camp_s13$S13, recodes="1:2='<1.000???';3:4='1.000???-1.999???';5:6='2.000???-2.999???';7:8='3.000???-3.999???';9:11='>4.000???' ",as.factor.result=T,levels=c("<1.000???","1.000???-1.999???","2.000???-2.999???","3.000???-3.999???",">4.000???"))
