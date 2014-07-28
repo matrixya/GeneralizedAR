@@ -25,7 +25,7 @@ shinyServer(function(input, output) {
     if (is.null(input$campID))
       return()
     
-    selected_camp <- subset(camp_data, country==input$countries& campaignID==input$campID)
+    selected_camp <- filter(camp_data, country==input$countries, campaignID==input$campID)
     netID_choice <- unique(selected_camp$netID_last_imp)
     netID_choice <- c("all",netID_choice)
              
@@ -40,7 +40,7 @@ shinyServer(function(input, output) {
     if (is.null(input$campID))
       return()
     
-    selected_camp <- subset(camp_data, country==input$countries & campaignID==input$campID)
+    selected_camp <- filter(camp_data, country==input$countries,campaignID==input$campID)
     week_choice <- levels(ordered(selected_camp$week))
     week_choice <- c("all",week_choice)
     
@@ -52,44 +52,60 @@ shinyServer(function(input, output) {
   
   
   ##----------------------------------------------------------------------------##
+ 
+  ## creating non null conditions
+  
+    not_null <- function() {
+      cond1 <- ifelse(is.null(input$countries),0,1)
+      cond2 <- ifelse(is.null(input$campID),0,1)
+      cond3 <- ifelse(is.null(input$checknetID),0,1)
+      cond4 <- ifelse(is.null(input$checkWeek),0,1)
+      test <- cond1 * cond2 * cond3 * cond4
+      test
+    }
+  
   # create a function acting according to condition of interactive inputs
-
-  dataset <- function(x,y){
+  
+  dataset <- function(y){
     
-    if(!is.null(input$countries) & !is.null(input$campID) & !is.null(input$checknetID) & !is.null(input$checkWeek)){
+    if(not_null() != 0){
       
       if(any(input$checknetID=="all")){
+        
         if(any(input$checkWeek=="all")){
           x <- subset(y, country==input$countries & campaignID==input$campID)
-          x <- x[!duplicated(x$userID),]
+          
         }else{
           x <- subset(y, country==input$countries & campaignID==input$campID & week %in% c(input$checkWeek))
-          x <- x[!duplicated(x$userID),]
+          
         }
-      }else{
+                    
+        
+      } else{
         if(any(input$checkWeek=="all")){
           x <- subset(y, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID))
-          x <- data1[!duplicated(x$userID),]
+          
         }else{
           x <- subset(y, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID) & week %in% c(input$checkWeek))
-          x <- data1[!duplicated(x$userID),]
+       
         }
-      }
+            }
       
     }else{
-      x <- subset(y)
-      x <- x[!duplicated(x$userID),]
+          x <- y
     }
+    
+    x[!duplicated(x$userID),]
   }
 
   ##----------------------------------------------------------------------------##
   # reactive campaign dataset of each varible
-    dataset1 <- reactive({dataset(data1,camp_s3)})
-    dataset2 <- reactive({dataset(data2,camp_s4n)})
-    dataset3 <- reactive({dataset(data3,camp_s5)})
-    dataset4 <- reactive({dataset(data4,camp_s13)})
+    dataset1 <- reactive({dataset(camp_s3)})
+    dataset2 <- reactive({dataset(camp_s4n)})
+    dataset3 <- reactive({dataset(camp_s5)})
+    dataset4 <- reactive({dataset(camp_s13)})
   
-    dataset5 <- reactive({dataset(data5,camp_data)})
+    dataset5 <- reactive({dataset(camp_data)})
 
   ##----------------------------------------------------------------------------##
   # target group as a combination of variables
@@ -98,14 +114,14 @@ shinyServer(function(input, output) {
       camp <- dataset5()
       
       v1 <- paste0(input$var1,"=([0-9]+);")  
-      camp$v1 <- reg_ex(v1,camp)
+      camp$v1 <- reg_ex(v1,camp$answers)
       value1 <- input$value1
           
       v2 <- paste0(input$var2,"=([0-9]+);")  
-      camp$v2 <- reg_ex(v2,camp)
+      camp$v2 <- reg_ex(v2,camp$answers)
       
       v3 <- paste0(input$var3,"=([0-9]+);")  
-      camp$v3 <- reg_ex(v3,camp)
+      camp$v3 <- reg_ex(v3,camp$answers)
   
       filtered1 <- subset(camp,(!is.na(camp$v1) & camp$v1!=0))
       filtered2 <- subset(filtered1,(!is.na(filtered1$v2) & filtered1$v2!=0))

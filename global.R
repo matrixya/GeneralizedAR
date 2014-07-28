@@ -4,12 +4,10 @@
   suppressPackageStartupMessages(library(ggplot2))
   suppressPackageStartupMessages(library(car))
   suppressPackageStartupMessages(library(plyr))
+  suppressPackageStartupMessages(library(dplyr))
+  
 
-#   camp_data <- read.delim("camp_data.csv", header=T, stringsAsFactors=F, check.names=F, sep="\t", nrow=1000)  
-#   classes <- sapply(camp_data,class)
-#   #classes[c("netID_last_imp","campaignID","netID_survey","surveyID","survey_ts","no_imp","ts_last_imp","week")] <- "integer"
-#   classes["userID"] <- "character"
-#   #classes[c("country","answers")] <- "character"
+# reading in the data
   
   camp_data <- read.delim("camp_data.csv", header=T, stringsAsFactors=F, check.names=F, sep="\t")  
   camp_data <- subset(camp_data, !is.na(camp_data$netID_survey))
@@ -24,10 +22,10 @@
 #----------------------------------------------------------------------------------####  
 # creating the reg_ex function extracting only the values of each variable
   
-  reg_ex <- function(var,campdat){
+  reg_ex <- function(var,data){
     
-    rec <- regexec(pattern=var, text=campdat$answers)   
-    reg_match <- regmatches(campdat$answers, rec)
+    rec <- regexec(pattern=var, text=data)   
+    reg_match <- regmatches(data, rec)
 
     innerfun <- function(y){
       x <- ifelse(length(y)==0,NA,y[2])
@@ -42,7 +40,7 @@
 #-----------------------------------------------------------------------------------------------#  
 # S3
   
-  camp_data$S3 <- reg_ex("S3=([0-9]);",camp_data)
+  camp_data$S3 <- reg_ex("S3=([0-9]);",camp_data$answers)
   
   camp_s3 <- subset(camp_data, S3>0)
   camp_s3$S3 <- recode(camp_s3$S3, 
@@ -54,9 +52,9 @@
 #-----------------------------------------------------------------------------------------------#  
 # S4n
   
-  camp_data$S4n <- reg_ex("S4n=([0-9][0-9]);",camp_data)
+  camp_data$S4n <- reg_ex("S4n=([0-9][0-9]);",camp_data$answers)
   
-  camp_s4n <- subset(camp_data,((camp_data$S4n>13)&(camp_data$S4n<99)))
+  camp_s4n <- filter(camp_data, S4n > 13, S4n <99)
   camp_s4n$S4n_kk <- recode(camp_s4n$S4n, 
                             recodes="14:17='14-17';18:19='18-19';20:29='20-29';30:39='30-39';40:49='40-49';50:59='50-59';60:98='60+'",
                             as.factor.result=T,
@@ -67,7 +65,7 @@
 #-----------------------------------------------------------------------------------------------#  
 # S5
   
-  camp_data$S5 <- reg_ex("S5=([0-9]+);",camp_data)
+  camp_data$S5 <- reg_ex("S5=([0-9]+);",camp_data$answers)
   
   camp_s5 <- subset(camp_data,(!is.na(camp_data$S5)) & camp_data$S5>0)
   camp_s5$S5_kk <- recode(camp_s5$S5, 
@@ -79,7 +77,7 @@
 #-----------------------------------------------------------------------------------------------#
 # S13
 
-  camp_data$S13 <- reg_ex("S13=([0-9]+);",camp_data)
+  camp_data$S13 <- reg_ex("S13=([0-9]+);",camp_data$answers)
 
   camp_data$S13 <- as.integer(camp_data$S13)
   camp_s13 <- subset(camp_data,(camp_data$S13<14)&(camp_data$S13>0))
