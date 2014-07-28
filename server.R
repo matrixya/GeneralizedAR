@@ -129,13 +129,19 @@ shinyServer(function(input, output) {
   }
 
   ##----------------------------------------------------------------------------##
-    output$view <- renderPrint({
-        fil <- combi()
-        c <-match(input$var1,names(fil))
-        print(c)
+  output$view <- renderPrint({
+   
+      fil <- combi()
+      
+      if(input$var1=="" & input$var2==""){
+        print("Please choose variables")
+      }else if(input$var1!="" & input$var2==""){
+        xtabs(~fil$v1) 
+      }else{
         xtabs(~fil$v1+fil$v2)
+      }
+      
     })
-    
   
   ##----------------------------------------------------------------------------##
     perbar<-function(dataset,xx){
