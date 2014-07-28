@@ -49,97 +49,90 @@ shinyServer(function(input, output) {
                               choices = week_choice,
                               selected = "all")    
   })
-
+  
+  
   ##----------------------------------------------------------------------------##
-  #S3  
-  dataset1 <- function(){
-    
-    if(!is.null(input$countries) & !is.null(input$campID) & !is.null(input$checknetID) & !is.null(input$checkWeek)){
-    
-      ## ALL Networks --------------------------------------------------------------------------------------------------##
-      if(any(input$checknetID=="all")){
-        if(any(input$checkWeek=="all")){
-          data1 <- subset(camp_s3, country==input$countries & campaignID==input$campID)  
-        }else{
-          data1 <- subset(camp_s3, country==input$countries & campaignID==input$campID & week %in% c(input$checkWeek))
-        }
-      }else{
-        if(any(input$checkWeek=="all")){
-          data1 <- subset(camp_s3, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID))
-        }else{
-          data1 <- subset(camp_s3, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID) & week %in% c(input$checkWeek))
-        }
-      }
-      
-  }else{
-    data1 <- subset(camp_s3)
-  }
-  }
+  # create a function acting according to condition of interactive inputs
 
-  ##----------------------------------------------------------------------------##
-  #S4n
-  dataset2 <- function(){
+  dataset <- function(x,y){
     
     if(!is.null(input$countries) & !is.null(input$campID) & !is.null(input$checknetID) & !is.null(input$checkWeek)){
       
-      ## ALL Networks --------------------------------------------------------------------------------------------------##
       if(any(input$checknetID=="all")){
         if(any(input$checkWeek=="all")){
-          data2 <- subset(camp_s4n, country==input$countries & campaignID==input$campID)  
+          x <- subset(y, country==input$countries & campaignID==input$campID)
+          x <- x[!duplicated(x$userID),]
         }else{
-          data2 <- subset(camp_s4n, country==input$countries & campaignID==input$campID & week %in% c(input$checkWeek))
+          x <- subset(y, country==input$countries & campaignID==input$campID & week %in% c(input$checkWeek))
+          x <- x[!duplicated(x$userID),]
         }
       }else{
         if(any(input$checkWeek=="all")){
-          data2 <- subset(camp_s4n, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID))
+          x <- subset(y, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID))
+          x <- data1[!duplicated(x$userID),]
         }else{
-          data2 <- subset(camp_s4n, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID) & week %in% c(input$checkWeek))
+          x <- subset(y, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID) & week %in% c(input$checkWeek))
+          x <- data1[!duplicated(x$userID),]
         }
       }
       
     }else{
-      data2 <- subset(camp_s4n)
+      x <- subset(y)
+      x <- x[!duplicated(x$userID),]
     }
   }
+
+  ##----------------------------------------------------------------------------##
+  # reactive campaign dataset of each varible
+    dataset1 <- reactive({dataset(data1,camp_s3)})
+    dataset2 <- reactive({dataset(data2,camp_s4n)})
+    dataset3 <- reactive({dataset(data3,camp_s5)})
+    dataset4 <- reactive({dataset(data4,camp_s13)})
   
-  # -------------------------------------------------------
-  perbar<-function(dataset,xx){
+    dataset5 <- reactive({dataset(data5,camp_data)})
+
+  ##----------------------------------------------------------------------------##
+  # target group as a combination of variables
+    
+  combi <- function(){
+      camp <- dataset5()
+      
+      v1 <- paste0(input$var1,"=([0-9]+);")  
+      camp$v1 <- reg_ex(v1,camp)
+      value1 <- input$value1
+          
+      v2 <- paste0(input$var2,"=([0-9]+);")  
+      camp$v2 <- reg_ex(v2,camp)
+      
+      v3 <- paste0(input$var3,"=([0-9]+);")  
+      camp$v3 <- reg_ex(v3,camp)
+  
+      filtered1 <- subset(camp,(!is.na(camp$v1) & camp$v1!=0))
+      filtered2 <- subset(filtered1,(!is.na(filtered1$v2) & filtered1$v2!=0))
+      filtered3 <- subset(filtered2,(!is.na(filtered2$v3) & filtered2$v3!=0))
+  }
+
+  ##----------------------------------------------------------------------------##
+    output$view <- renderPrint({
+        fil <- combi()
+        c <-match(input$var1,names(fil))
+        print(c)
+        xtabs(~fil$v1+fil$v2)
+    })
+    
+  
+  ##----------------------------------------------------------------------------##
+    perbar<-function(dataset,xx){
     q <- ggplot(data= dataset, aes_string(x=xx, fill=xx))+
       geom_bar(aes(y =..count..))+
       geom_text(aes(y = ..count..,
                     label = ifelse((..count..)==0,"",
-                    scales::percent((..count..)/sum(..count..)))),
-                    stat="bin",colour="darkgreen") 
+                                   scales::percent((..count..)/sum(..count..)))),
+                stat="bin",colour="darkgreen") 
     q
   }
   
   ##----------------------------------------------------------------------------##
-  #S5
-  dataset3 <- function(){
-    
-    if(!is.null(input$countries) & !is.null(input$campID) & !is.null(input$checknetID) & !is.null(input$checkWeek)){
-      
-      ## ALL Networks --------------------------------------------------------------------------------------------------##
-      if(any(input$checknetID=="all")){
-        if(any(input$checkWeek=="all")){
-          data3 <- subset(camp_s5, country==input$countries & campaignID==input$campID)  
-        }else{
-          data3 <- subset(camp_s5, country==input$countries & campaignID==input$campID & week %in% c(input$checkWeek))
-        }
-      }else{
-        if(any(input$checkWeek=="all")){
-          data3 <- subset(camp_s5, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID))
-        }else{
-          data3 <- subset(camp_s5, country==input$countries & campaignID==input$campID & netID_last_imp %in% c(input$checknetID) & week %in% c(input$checkWeek))
-        }
-      }
-      
-    }else{
-      data3 <- subset(camp_s5)
-    }
-  }
-  
-  # -------------------------------------------------------
   # rendering the plots
   output$all <- renderPlot({
     
@@ -147,9 +140,9 @@ shinyServer(function(input, output) {
     isolate(graph1 <- perbar(dataset1(),'S3'))
     isolate(graph2 <- perbar(dataset2(),'S4n_kk'))
     isolate(graph3 <- perbar(dataset3(),'S5_kk'))
+    isolate(graph4 <- perbar(dataset4(),'S13_kk'))
   
-    grid.arrange(graph1,graph2, graph3, nrow = 2, ncol = 2)
-    
+    grid.arrange(graph1,graph2, graph3, graph4, nrow = 2, ncol = 2)
   })
   
 })

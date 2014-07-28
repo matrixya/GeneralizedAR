@@ -3,19 +3,16 @@
   
   suppressPackageStartupMessages(library(ggplot2))
   suppressPackageStartupMessages(library(car))
-  suppressPackageStartupMessages(library(dplyr))
+  suppressPackageStartupMessages(library(plyr))
 
-# camp_data <- read.delim("extra/original.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")
-# 
-# country_net <- read.delim("extra/network_country.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")
-# country_net <- country_net[,-2]
-#   
-# merged <- merge(camp_data,country_net,by.x="netID_last_imp",by.y="id",all.x=T)
-# merged <- subset(merged, !(is.na(merged$country)))
-# 
-# write.table(merged,"camp_data.csv", row.names=F, col.names=T, sep="\t", na="", quote=F)
-
-  camp_data <- read.delim("camp_data.csv", header=T,stringsAsFactors=F, check.names=F, sep="\t")  
+#   camp_data <- read.delim("camp_data.csv", header=T, stringsAsFactors=F, check.names=F, sep="\t", nrow=1000)  
+#   classes <- sapply(camp_data,class)
+#   #classes[c("netID_last_imp","campaignID","netID_survey","surveyID","survey_ts","no_imp","ts_last_imp","week")] <- "integer"
+#   classes["userID"] <- "character"
+#   #classes[c("country","answers")] <- "character"
+  
+  camp_data <- read.delim("camp_data.csv", header=T, stringsAsFactors=F, check.names=F, sep="\t")  
+  camp_data <- subset(camp_data, !is.na(camp_data$netID_survey))
   
 #-----------------------------------------------------------------------------------------------#
 # defining a variable of campaign IDs
@@ -24,119 +21,145 @@
   unq_week <- unique(camp_data$week)
   unq_netID <- unique(camp_data$netID_last_imp)
   
-#-----------------------------------------------------------------------------------------------#
-# selecting values of S3
-
-S3 <- function(x){
+#----------------------------------------------------------------------------------####  
+# creating the reg_ex function extracting only the values of each variable
   
-  r = regexpr("S3=[0-9];",camp_data$answers)
-  
-  innerfun <- function(y){
-    x <- ifelse(y==-1,NA,y)
-    return(x)
-  }
-  
-  s <- sapply(r,innerfun)
-  
-  result = substr(camp_data$answers, start=s+3, stop=s+3)
-  
-  return(result)
-}
-
-camp_data$S3 <- S3(camp_data$answers)
-
-camp_s3 <- subset(camp_data,!(is.na(camp_data$S3)|camp_data$S3==0))
-camp_s3$S3 <- recode(camp_s3$S3, recodes="1='male';2='female'",as.factor.result=T,levels=c("male","female"))
-  
-
-#-----------------------------------------------------------------------------------------------#
-# selecting values of S4n
-  
-S4n <- function(x){
+  reg_ex <- function(var,campdat){
     
-  r = regexpr("S4n=[0-9][0-9];",camp_data$answers)
-    
-  innerfun <- function(y){
-      x <- ifelse(y==-1,NA,y)
+    rec <- regexec(pattern=var, text=campdat$answers)   
+    reg_match <- regmatches(campdat$answers, rec)
+
+    innerfun <- function(y){
+      x <- ifelse(length(y)==0,NA,y[2])
       return(x)
     }
     
-    s <- sapply(r,innerfun)
+    values <- sapply(reg_match,innerfun)
     
-    result = substr(camp_data$answers, start=s+4, stop=s+5)
-    
-    return(result)
+    return(values)
   }
   
-camp_data$S4n <- S4n(camp_data$answers)
+#-----------------------------------------------------------------------------------------------#  
+# S3
   
-camp_s4n <- camp_data[((camp_data$S4n>13)&(camp_data$S4n<99)),]
-camp_s4n <- subset(camp_data,!is.na(camp_data$S4n))
-camp_s4n$S4n_kk <- recode(camp_s4n$S4n, recodes="10:19='14-19';20:29='20-29';30:39='30-39';40:49='40-49';50:59='50-59';60:hi='60+'",as.factor.result=T)
+  camp_data$S3 <- reg_ex("S3=([0-9]);",camp_data)
+  
+  camp_s3 <- subset(camp_data, S3>0)
+  camp_s3$S3 <- recode(camp_s3$S3, 
+                     recodes="0=NA;1='male';2='female'",
+                     as.factor.result=T,levels=c("male","female"))
 
-#-----------------------------------------------------------------------------------------------#
-# selecting values of S5
+  camp_s3 <- subset(camp_s3,!(is.na(camp_s3$S3)))
   
-S5 <- function(x){
-    
-  r = regexpr("S5=([0-9]+);",camp_data$answers, perl=TRUE)
-  grex = gregexpr("S5=([0-9]+);",camp_data$answers)
-    
-  matched_len <- function(x){attr(x,"match.length")}
-  len_char <- sapply(grex,matched_len)
-    
-  innerfun <- function(y){
-    x <- ifelse(y==-1,NA,y)
-    return(x)
-  }
-    
-  len_char <- sapply(grex,matched_len)
-  s <- sapply(r,innerfun)
-    
-  s+len_char
-    
-  result = substr(camp_data$answers, start=s+len_char-3, stop=s+len_char-2)
-  result <- gsub("=","",result)
-    
-  return(result)
-}
+#-----------------------------------------------------------------------------------------------#  
+# S4n
   
-camp_data$S5 <- S5(camp_data$answers)
-camp_data$S5 <- as.integer(camp_data$S5)
+  camp_data$S4n <- reg_ex("S4n=([0-9][0-9]);",camp_data)
   
-camp_s5 <- subset(camp_data,(!is.na(camp_data$S5)) & camp_data$S5>0)
-camp_s5$S5_kk <- recode(camp_s5$S5, recodes="1='1';2='2';3='3';4='4';5:hi='5+'",as.factor.result=T,levels=c("1","2","3","4","5+"))
+  camp_s4n <- subset(camp_data,((camp_data$S4n>13)&(camp_data$S4n<99)))
+  camp_s4n$S4n_kk <- recode(camp_s4n$S4n, 
+                            recodes="14:17='14-17';18:19='18-19';20:29='20-29';30:39='30-39';40:49='40-49';50:59='50-59';60:98='60+'",
+                            as.factor.result=T,
+                            levels=c("14-17","18-19","20-29","30-39","40-49","50-59","60+"))
+  camp_s4n <- subset(camp_s4n,!is.na(camp_s4n$S4n))
+  
+  
+#-----------------------------------------------------------------------------------------------#  
+# S5
+  
+  camp_data$S5 <- reg_ex("S5=([0-9]+);",camp_data)
+  
+  camp_s5 <- subset(camp_data,(!is.na(camp_data$S5)) & camp_data$S5>0)
+  camp_s5$S5_kk <- recode(camp_s5$S5, 
+                          recodes="1='1';2='2';3='3';4='4';5:hi='5+'",
+                          as.factor.result=T,levels=c("1","2","3","4","5+"))
+  camp_s5 <- subset(camp_s5,!is.na(camp_s5$S5_kk))
+  
   
 #-----------------------------------------------------------------------------------------------#
-# selecting values of S13
-  
-S13 <- function(x){
-    
-  r = regexpr("S13=([0-9]+);",camp_data$answers, perl=TRUE)
-  grex = gregexpr("S13=([0-9]+);",camp_data$answers)
-    
-  matched_len <- function(x){attr(x,"match.length")}
-  len_char <- sapply(grex,matched_len)
-    
-  innerfun <- function(y){
-  x <- ifelse(y==-1,NA,y)
-    return(x)
-  }
-    
-  len_char <- sapply(grex,matched_len)
-  s <- sapply(r,innerfun)
-    
-  s+len_char
-    
-  result = substr(camp_data$answers, start=s+len_char-3, stop=s+len_char-2)
-  result <- gsub("=","",result)
-    
-  return(result)
-}
-  
-camp_data$S13 <- S13(camp_data$answers)
-camp_data$S13 <- as.integer(camp_data$S13)
+# S13
 
-camp_s13 <- subset(camp_data,!is.na(camp_data$S13))
-camp_s13 <- subset(camp_data,(camp_data$S13<14)&(camp_data$S13>0))
-camp_s13$S13_de <- recode(camp_s13$S13, recodes="1:2='<1.000???';3:4='1.000???-1.999???';5:6='2.000???-2.999???';7:8='3.000???-3.999???';9:11='>4.000???' ",as.factor.result=T,levels=c("<1.000???","1.000???-1.999???","2.000???-2.999???","3.000???-3.999???",">4.000???"))
+  camp_data$S13 <- reg_ex("S13=([0-9]+);",camp_data)
+
+  camp_data$S13 <- as.integer(camp_data$S13)
+  camp_s13 <- subset(camp_data,(camp_data$S13<14)&(camp_data$S13>0))
+
+  
+  ## de & at
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 %in% c(1:2)] <- "very low"
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 %in% c(3:4)] <- "low"
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 %in% c(5:6)] <- "average"
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 %in% c(7:8)] <- "high"  
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 %in% c(9:11)] <- "very high"
+  camp_s13$S13_kk[camp_s13$country %in% c("de","at") & camp_s13$S13 == 12 ] <- NA
+  
+  #fr and lpm
+  camp_s13$S13_kk[camp_s13$country %in% c("fr","lpm") & camp_s13$S13 == 1 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country %in% c("fr","lpm") & camp_s13$S13 == 3 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country %in% c("fr","lpm") & camp_s13$S13 == 5 ] <- "average"
+  camp_s13$S13_kk[camp_s13$country %in% c("fr","lpm") & camp_s13$S13 == 7 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country %in% c("fr","lpm") & camp_s13$S13 == 8 ] <- "very high"
+  
+  #ch
+  camp_s13$S13_kk[camp_s13$country=="ch" &  camp_s13$S13 == 1 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="ch" &  camp_s13$S13 %in% 2:4 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country=="ch" &  camp_s13$S13 %in% 5:8 ] <- "average"
+  camp_s13$S13_kk[camp_s13$country=="ch" &  camp_s13$S13 %in% 9:12 ] <- "high" 
+  camp_s13$S13_kk[camp_s13$country=="ch" &  camp_s13$S13 == 13 ] <- "very high"
+    
+  #dk
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 %in% 1:2 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 %in% 3:4 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 %in% 5:6 ] <- "average"
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 %in% 7:8 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 %in% 9:11 ] <- "very high"
+  camp_s13$S13_kk[camp_s13$country=="dk" & camp_s13$S13 == 12 ] <- NA
+  
+  #no
+  camp_s13$S13_kk[camp_s13$country=="no" & camp_s13$S13 %in% 1:3 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="no" & camp_s13$S13 %in% 4:5 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country=="no" & camp_s13$S13 %in% 6:7 ] <- "average"
+  camp_s13$S13_kk[camp_s13$country=="no" & camp_s13$S13 %in% 8:9 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country=="no" & camp_s13$S13 %in% 10:11 ] <- "very high"
+  
+  #se
+  camp_s13$S13_kk[camp_s13$country=="se" & camp_s13$S13 == 1 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="se" & camp_s13$S13 %in% 2:3 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country=="se" & camp_s13$S13 %in% 4:5 ] <- "average" 
+  camp_s13$S13_kk[camp_s13$country=="se" & camp_s13$S13 %in% 6:7 ] <- "high"  
+  camp_s13$S13_kk[camp_s13$country=="se" & camp_s13$S13 %in% 8:11 ] <- "very high"
+         
+  #gr
+  camp_s13$S13_kk[camp_s13$country=="gr" & camp_s13$S13 == 1 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="gr" & camp_s13$S13 == 2 ] <- "low"
+  camp_s13$S13_kk[camp_s13$country=="gr" & camp_s13$S13 %in% 3:4 ] <- "average" 
+  camp_s13$S13_kk[camp_s13$country=="gr" & camp_s13$S13 == 5 ] <- "high" 
+  camp_s13$S13_kk[camp_s13$country=="gr" & camp_s13$S13 %in% 6:11 ] <- "very high"
+        
+  #it
+  camp_s13$S13_kk[camp_s13$country=="it" & camp_s13$S13 == 1] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="it" & camp_s13$S13 %in% 2:3 ] <- "low" 
+  camp_s13$S13_kk[camp_s13$country=="it" & camp_s13$S13 %in% 4:6 ] <- "average"   
+  camp_s13$S13_kk[camp_s13$country=="it" & camp_s13$S13 %in% 7:8 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country=="it" & camp_s13$S13 %in% 9:11 ] <- "very high"
+     
+  #pl
+  camp_s13$S13_kk[camp_s13$country=="pl" & camp_s13$S13 %in% 1:5 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country=="pl" & camp_s13$S13 %in% 6:7 ] <- "low" 
+  camp_s13$S13_kk[camp_s13$country=="pl" & camp_s13$S13 %in% 8:9 ] <- "average" 
+  camp_s13$S13_kk[camp_s13$country=="pl" & camp_s13$S13 == 10 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country=="pl" & camp_s13$S13 == 11 ] <- "very high"
+    
+  #ro, bg, ba
+  camp_s13$S13_kk[camp_s13$country %in% c("ro","bg","ba","sr","ua","cz") & camp_s13$S13 %in% 1:2 ] <- "very low"
+  camp_s13$S13_kk[camp_s13$country %in% c("ro","bg","ba","sr","ua","cz") & camp_s13$S13 %in% 3:4 ] <- "low" 
+  camp_s13$S13_kk[camp_s13$country %in% c("ro","bg","ba","sr","ua","cz") & camp_s13$S13 %in% 5:6 ] <- "average" 
+  camp_s13$S13_kk[camp_s13$country %in% c("ro","bg","ba","sr","ua","cz") & camp_s13$S13 %in% 7:8 ] <- "high"
+  camp_s13$S13_kk[camp_s13$country %in% c("ro","bg","ba","sr","ua","cz") & camp_s13$S13 %in% 9:11 ] <- "very high"
+    
+  #sr, cz, ua ?????????????????????????
+      
+  camp_s13$S13_kk <- factor(camp_s13$S13_kk, levels=c("very low","low","average","high","very high"))
+  camp_s13 <- subset(camp_s13,!is.na(camp_s13$S13_kk)) 
+  
+  
