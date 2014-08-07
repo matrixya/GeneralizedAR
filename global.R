@@ -14,6 +14,7 @@
   
 #-----------------------------------------------------------------------------------------------#
 # defining a variable of campaign IDs
+  
   unq_country <- unique(camp_data$country)
   unq_campID <- unique(camp_data$campaignID)
   unq_week <- unique(camp_data$week)
@@ -36,12 +37,29 @@
     
     return(values)
   }
+
+#----------------------------------------------------------------------------------####  
+# reading the surveys varibles of all countries
+  
+  varlist <- read.delim("SurveyVarList.txt", header=T, stringsAsFactors=F, check.names=F, sep="\t")  
+  var<-paste0(varlist$de,"=([0-9]+);")
+  
+  for(i in seq_along(varlist$de)){
+    varname <- varlist$de[i]
+    camp_data[,11+i] <- reg_ex(var[i],camp_data$answers)
+    names(camp_data)[(11+i)] <- varname
+  }
+  
+  write.table(camp_data,"test.csv",sep="\t",row.names=F,col.names=T,quote=F,na="")  
+  
+  camp_data <- subset(camp_data,!is.na(camp_data$S4n) & camp_data$S4n!=99)
+  
+  
   
 #-----------------------------------------------------------------------------------------------#  
 # S3
   
-  camp_data$S3 <- reg_ex("S3=([0-9]);",camp_data$answers)
-  
+  #camp_data$S3 <- reg_ex("S3=([0-9]+);",camp_data$answers)
   camp_s3 <- subset(camp_data, S3>0)
   camp_s3$S3 <- recode(camp_s3$S3, 
                      recodes="0=NA;1='male';2='female'",
@@ -52,7 +70,7 @@
 #-----------------------------------------------------------------------------------------------#  
 # S4n
   
-  camp_data$S4n <- reg_ex("S4n=([0-9][0-9]);",camp_data$answers)
+  #camp_data$S4n <- reg_ex("S4n=([0-9]+);",camp_data$answers)
   
   camp_s4n <- filter(camp_data, S4n > 13, S4n <99)
   camp_s4n$S4n_kk <- recode(camp_s4n$S4n, 
@@ -65,7 +83,7 @@
 #-----------------------------------------------------------------------------------------------#  
 # S5
   
-  camp_data$S5 <- reg_ex("S5=([0-9]+);",camp_data$answers)
+  #camp_data$S5 <- reg_ex("S5=([0-9]+);",camp_data$answers)
   
   camp_s5 <- subset(camp_data,(!is.na(camp_data$S5)) & camp_data$S5>0)
   camp_s5$S5_kk <- recode(camp_s5$S5, 
@@ -77,7 +95,7 @@
 #-----------------------------------------------------------------------------------------------#
 # S13
 
-  camp_data$S13 <- reg_ex("S13=([0-9]+);",camp_data$answers)
+  #camp_data$S13 <- reg_ex("S13=([0-9]+);",camp_data$answers)
 
   camp_data$S13 <- as.integer(camp_data$S13)
   camp_s13 <- subset(camp_data,(camp_data$S13<14)&(camp_data$S13>0))
@@ -159,5 +177,59 @@
       
   camp_s13$S13_kk <- factor(camp_s13$S13_kk, levels=c("very low","low","average","high","very high"))
   camp_s13 <- subset(camp_s13,!is.na(camp_s13$S13_kk)) 
+  
+  
+#-----------------------------------------------------------------------------------------------#
+# recoding varibles
+  
+  namy<-names(camp_data)
+    
+  camp_data$K1_11<-recode(camp_data$K1_11,"0=NA;1=0;2=1")
+  
+  camp_data$K2_24<-recode(camp_data$K2_24,"1=0;2=1")
+  
+  camp_data$K2_25<-recode(camp_data$K2_25,"1=0;2=1")
+  
+  camp_data[,namy[grep("P1",namy)]]<-apply(camp_data[,namy[grep("P1",namy)]],2,function(x) recode(x,"0=NA;1=0;2=1;3=2;4=3"))
+  
+  camp_data[,namy[grep("P2",namy)]]<-apply(camp_data[,namy[grep("P2",namy)]],2,function(x) recode(x,"0=NA;1=0;2=1;3=2;4=3"))
+  
+  camp_data[,namy[grep("P3",namy)]]<-apply(camp_data[,namy[grep("P3",namy)]],2,function(x) recode(x,"0=NA;1:2=0;3:4=1"))
+  
+  camp_data[,namy[grep("P4",namy)]]<-apply(camp_data[,namy[grep("P4",namy)]],2,function(x) recode(x,"0=NA;1:2=0;3:4=1"))
+  
+  #recoding s3
+  camp_data$S3<-recode(camp_data$S3,"0=NA;1=0;2=1")
+  
+  #recode S4n to S4n_kk
+  camp_data$S4n_kk<-recode(camp_data$S4n,"14:19=0;20:29=1;30:39=2;40:49=3;50:59=4;60:98=5")
+  
+  #recode S4n to S4n_kkv
+  camp_data$S4n_kkv<-recode(camp_data$S4n,"14:17=0;18:19=1;19:hi=NA")
+  
+  
+  #recode S5
+  camp_data$S5_kk<-recode(camp_data$S5,"0=NA;1=0;2=1;3=2;4=3;5:hi=4")
+  
+  #recode S6 variableS
+  camp_data[,namy[grep("S6",namy)]]<-apply(camp_data[,namy[grep("S6",namy)]],2,function(x) recode(x,"0=NA;1=0;2=1"))
+  
+  #recode S7
+  camp_data$S7<-recode(camp_data$S7,"0=NA;1=0;2=1")
+  
+  #recode S8
+  camp_data$S8<-recode(camp_data$S8,"0=NA;1=0;2=1")
+  
+  #recode S9_kk
+  camp_data$S9_kk<-recode(camp_data$S9,"0=NA;1=0;2:3=1;4:5=2;6=3")
+    
+  #recode S10_neu
+  camp_data$S10_neu<-recode(camp_data$S10,"0=NA;1=0;2=1;3=2;4=3;5=4")
+    
+  #recode S12_kk
+  camp_data$S12_kk<-recode(camp_data$S12,"0=NA;1:2=1;3:4=2;5:6=3;7:8=4;9:11=5;12=0")
+  
+  #recode S13_kk
+  #camp_data$S13_kk<-recode(camp_data$S13,"0=NA;1:2=0;3:4=1;5:6=2;7:8=3;9:11=4;12=NA")
   
   
