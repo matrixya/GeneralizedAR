@@ -28,20 +28,32 @@ shinyUI(fluidPage(
                           plotOutput("all", width=800,height=700))
          
   )),
-  
+    
   fluidRow(
     
     column(3, wellPanel(
-         textInput("var1","Variable1","..."),
-         textInput("value1","Value1","..."))),
+      selectInput(inputId="var1",
+                  label="Variable 1",
+                  choices = c("",vari_list)
+                  ),
+      conditionalPanel("input.var1!=''",uiOutput("valuecontrol1"))
+    )),
     
     column(3, wellPanel(
-          textInput("var2","Variable2","..."),
-          textInput("value2","Value2","..."))),
-    
+      selectInput(inputId="var2",
+                  label="Variable 2",
+                  choices = c("",vari_list)
+                  ),
+      uiOutput("valuecontrol2")
+    )),
+      
     column(3, wellPanel(
-      textInput("var3","Variable3","..."),
-      textInput("value3","Value3","...")))
+      selectInput(inputId="var3",
+                  label="Variable 3",
+                  choices = c("",vari_list)
+                  ),
+      uiOutput("valuecontrol3")
+    ))
   ),
   
   fluidRow(

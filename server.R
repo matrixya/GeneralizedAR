@@ -9,7 +9,7 @@ shinyServer(function(input, output) {
   # interactive inputs
   
   output$campIDcontrol <- renderUI({
-        
+    
     seleted_ctry <- subset(camp_data, country==input$countries)
     camp_choice <- unique(seleted_ctry$campaignID)
     
@@ -106,42 +106,115 @@ shinyServer(function(input, output) {
     dataset4 <- reactive({dataset(camp_s13)})
   
     dataset5 <- reactive({dataset(camp_data)})
+  
 
+  ##----------------------------------------------------------------------------##
+  # control of variable drop-down list
+  
+  output$valuecontrol1 <- renderUI({
+    
+    if(nchar(input$var1)<1){
+      return()
+      
+    }else{
+   
+    value_choice <- unique(camp_data[,input$var1])
+    value_choice <- sort(value_choice)
+    
+    checkboxGroupInput(inputId="value1",
+                        label="Values",
+                        choices =setdiff(value_choice,'NA'))
+    }
+  })
+    
+  output$valuecontrol2 <- renderUI({
+    
+    if(nchar(input$var2)<1){
+      return()
+      
+    }else{
+      
+    value_choice <- unique(camp_data[,input$var2])
+    value_choice <- sort(value_choice)
+    
+    checkboxGroupInput(inputId="value2",
+                       label="Values",
+                       choices =setdiff(value_choice,'NA')
+    )
+    }  
+  })
+  
+  output$valuecontrol3 <- renderUI({
+    
+    if(nchar(input$var3)<1){
+      return()
+      
+    }else{
+    
+    value_choice <- unique(camp_data[,input$var3])
+    value_choice <- sort(value_choice)
+    
+    checkboxGroupInput(inputId="value3",
+                       label="Values",
+                       choices =setdiff(value_choice,'NA')
+    )
+    }
+  })  
+  
+  
   ##----------------------------------------------------------------------------##
   # target group as a combination of variables
-    
   combi <- function(){
-      camp <- dataset5()
       
-      v1 <- paste0(input$var1,"=([0-9]+);")  
-      camp$v1 <- reg_ex(v1,camp$answers)
-      value1 <- input$value1
-          
-      v2 <- paste0(input$var2,"=([0-9]+);")  
-      camp$v2 <- reg_ex(v2,camp$answers)
+    camp <- dataset5()
       
-      v3 <- paste0(input$var3,"=([0-9]+);")  
-      camp$v3 <- reg_ex(v3,camp$answers)
-  
-      filtered1 <- subset(camp,(!is.na(camp$v1) & camp$v1!=0))
-      filtered2 <- subset(filtered1,(!is.na(filtered1$v2) & filtered1$v2!=0))
-      filtered3 <- subset(filtered2,(!is.na(filtered2$v3) & filtered2$v3!=0))
-  }
-
+      if(nchar(input$var1)>1 & !is.null(input$value1)){
+        filtered <- subset(camp_data,(!is.na(input$var1)))
+        
+        #unselected <- setdiff(unique(filtered[,input$var1]),c(input$value1))
+        
+        
+      }
+    
+      
+#           
+#       camp$v2 <- reg_ex(input$var2,camp$answers)
+#       value2 <- input$value2
+#       
+#       #camp$v3 <- reg_ex(input$var3,camp$answers)
+#   
+#       filtered1 <- subset(camp_data,(!is.na(input$var1) & input$var1!=0))
+#       filtered2 <- subset(filtered1,(!is.na(input$var2) & input$var2!=0))
+#       #filtered3 <- subset(filtered2,(!is.na(filtered2$v3) & filtered2$v3!=0))
+   }
+    
   ##----------------------------------------------------------------------------##
+  
   output$view <- renderPrint({
    
-      fil <- combi()
-      
-      if(input$var1=="" & input$var2==""){
-        print("Please choose variables")
-      }else if(input$var1!="" & input$var2==""){
-        xtabs(~fil$v1) 
-      }else{
-        xtabs(~fil$v1+fil$v2)
-      }
-      
-    })
+    fil <- combi()
+#     selected <- input$value1
+#     unselected <- setdiff(uni,selected)
+#     
+#     print(uni)
+#     print(selected)
+#     print(unselected)
+     #print(fil)
+    table(fil$target)
+
+#       if(input$var1==Choose & input$var2==''){
+#          print("Please choose variables")
+#        }else if(input$var1!="" & input$var2==""){
+#         
+#          Variable1<-fil[,input$var1]
+#          xtabs(~Variable1) 
+#        }
+#       else{
+#         Variable1<-fil[,input$var1]
+#         Variable2<-fil[,input$var2]
+#           xtabs(~Variable1+Variable2)
+#        }
+  })
   
   ##----------------------------------------------------------------------------##
     perbar<-function(dataset,xx){
